@@ -15,7 +15,7 @@ from pretrain import train
 from util import *
 from architecture import *
 from data import get_data
-from active_train import ActiveLearning, get_new_resnet18
+from active_train import ActiveLearning
 
 args = get_args()
 
@@ -39,12 +39,16 @@ device = get_device()
 results = []
 
 # get Dataloader
-train_data, pool_data, test_data = get_data(train_ratio=args.train, pool_ratio=args.pool,test_ratio=args.test)
+train_data, pool_data, test_data, train_origin, pool_origin = get_data(train_ratio=args.train, pool_ratio=args.pool,test_ratio=args.test)
 
 num_labels = test_data.label_length()
 # print(test_label_length)
 out_size = num_labels
 num_features = train_data.x.size(1)
+def get_new_resnet18():
+    active_model = ResNet18(in_size=num_features, hidden_size=args.m_hidden, out_size=out_size, embed=args.m_embed,
+                            drop_p=args.m_drop_p, activation=args.m_activation)
+    return active_model
 
 #linear_model = ResNet18(in_size=num_features, hidden_size=args.m_hidden, out_size=out_size, embed=args.m_embed,
 #                       drop_p=args.m_drop_p, activation=args.m_activation).to(device)
@@ -88,7 +92,7 @@ num_features = train_data.x.size(1)
 #         writer_obj = csv.writer(f)
 #         writer_obj.writerow(results)
 
-active_learning = ActiveLearning(train_data, pool_data, device_al_train=device)
+active_learning = ActiveLearning(train_origin,pool_origin,train_data, pool_data, device_al_train=device)
 #active_model = get_new_resnet18().to(device)
 for i in range(args.active_rounds, 0, -1):
     since = time.time()
@@ -96,12 +100,12 @@ for i in range(args.active_rounds, 0, -1):
 
     active_learning.select_instances_entropy(active_model, n_instances=args.active_instances)
 
-    active_learning.train_model(active_model)
+    active_learning.train_model(active_model,args)
 
     al_results = add_res(active_model, test_data.get_x(), test_data.get_y(), device=device)
     time_elapsed = time.time() - since
     print(
-        'There are ', i-1, "round of active learning left. This round complete in {:.0f}m {:.0f}s".format(
+        'There are ', i - 1, "round of active learning left. This round complete in {:.0f}m {:.0f}s".format(
             time_elapsed // 60, time_elapsed % 60
         )
     )

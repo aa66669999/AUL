@@ -115,22 +115,22 @@ def get_data(train_ratio, pool_ratio, test_ratio):
     print('testing datasize', len(test_index))
     print('pooling datasize', len(candidate_index))
 
-    xtrain = torch.tensor(x[train_index])
+    xtrain_origin = torch.tensor(x[train_index])
     xtest = torch.tensor(x[test_index])
     ytrain = torch.tensor(y[train_index])
     ytest = torch.tensor(y[test_index])
-    xcan = torch.tensor(x[candidate_index])
+    xcan_origin = torch.tensor(x[candidate_index])
     ycan = torch.tensor(y[candidate_index])
 
 # add it when it's CV model@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-    xtrain = preprocess_data(xtrain)
+    xtrain = preprocess_data(xtrain_origin)
     xtest = preprocess_data(xtest)
-    xcan = preprocess_data(xcan)
+    xcan = preprocess_data(xcan_origin)
 
     train_data = MyDataset(xtrain,  ytrain)
     test_data = MyDataset(xtest,  ytest)
     pool_data = MyDataset(xcan, ycan)
-    return train_data, pool_data, test_data
+    return train_data, pool_data, test_data,xtrain_origin,xcan_origin
 
 
 # # Assuming you have your data x and y ready
