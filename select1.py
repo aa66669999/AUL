@@ -511,11 +511,20 @@ def test12(self, probs, n_instances):
     #temp21 = temp2 / a
     #testmin = torch.argmin(temp21)
     #print(f"Min index in pooling {testmin}")
-    _, collum = torch.topk(temp2, k=1, largest=False)
+    value2, collum2 = torch.sort(temp2)
+    _,collum=torch.topk(temp2, k=1, largest=False)
+    for i in range(156):
+        if collum2[i] in self.coindex:
+            print(f"found and break {collum2[i]}")
+            collum=collum2[i].cpu()
+            break
+        else:
+            print(f"index not found {collum2[i]}")
+
     c = collum
     c = c.cpu()
     c = c.numpy()
-    c1 = c[0]
+    c1 = c
     print(f"Min label in pooling {c1}")
     value, row1 = torch.sort(temp1[:, c1], dim=0)
     size2=row1.size()

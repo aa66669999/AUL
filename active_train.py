@@ -2,6 +2,7 @@ import copy
 import csv
 import time
 
+import torch
 from sklearn.metrics import roc_auc_score
 from torch import optim
 import pandas as pd
@@ -48,8 +49,10 @@ class ActiveLearning:
 
         temp1=torch.tensor(jaccard_similarity_matrix)
         temp2 = torch.sum(temp1, dim=0)
-        value, row1=torch.sort(temp2)
-        print("Jaccard Similarity Matrix:\n", jaccard_similarity_matrix)
+        value, row1=torch.topk(temp2,k=80,largest=False)
+        self.covalue=value.cuda()
+        self.coindex=row1.cuda()
+        #print("Jaccard Similarity Matrix:\n", jaccard_similarity_matrix)
 
 
 
@@ -132,7 +135,7 @@ class ActiveLearning:
         # _, selected_indices = torch.topk(entropy, n_instances)  # , largest=False)
 
 
-        selected_indices=select1.test11(self,probs, n_instances)
+        selected_indices=select1.test12(self,probs, n_instances)
         #selected_indices=self.random(n_instances)
 
         # Get the corresponding instances and labels
