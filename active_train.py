@@ -135,7 +135,7 @@ class ActiveLearning:
         # _, selected_indices = torch.topk(entropy, n_instances)  # , largest=False)
 
 
-        selected_indices=select1.test12(self,probs, n_instances)
+        selected_indices=select1.testsum(self,probs, n_instances)
         #selected_indices=self.random(n_instances)
 
         # Get the corresponding instances and labels

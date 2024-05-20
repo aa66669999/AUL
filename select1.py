@@ -546,7 +546,17 @@ def test12(self, probs, n_instances):
     list1=np.array(list)
     print("cc")
     return list1
+def testsum(self, probs, n_instances):
+    temp1=self.dataset.y
+    temp2 = torch.sum(temp1, dim=1)
+    value21, cresult5 = torch.topk(temp2, k=n_instances, largest=True)
 
+    c = cresult5
+    c = c.cpu()
+    c = c.numpy()
+    c1 = c
+    print("cc")
+    return c1
 
 
 

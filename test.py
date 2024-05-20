@@ -96,6 +96,3 @@ def precision_at_k(output, target, k):
 # k = 2
 # precision = precision_at_k(output, target, k)
 # print("Precision at {}:".format(k), precision)
-import torch
-
-print(torch.__version__)
