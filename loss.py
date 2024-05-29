@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 from torch import nn, tensor
 import torch.nn.functional as F
@@ -61,7 +62,6 @@ def ml_nn_loss(y, outputs, model, device=None):
     surrogate_auc_loss_u2 = SurrogateAUCLossNatural()
     loss = crossentropy_loss(outputs, y)/50 + surrogate_auc_loss_u2(y, outputs)
     # loss = pairwise_ranking_loss(y, outputs)
-
     return loss
 
 
@@ -192,11 +192,74 @@ class SurrogateAUCLossNatural(nn.Module):
         return hinge_loss
 
 
+class MacroAUCLossNatural(nn.Module):
+    def __init__(self):
+        super(MacroAUCLossNatural, self).__init__()
+
+    def forward(self, y_true, y_pred):
+
+        batch_size, num_labels = y_true.size()
+
+        # Initialize a list to store the rank loss for each label
+        rank_losses = []
+
+        # Loop over each label
+        for label in range(num_labels):
+            y_true_label = y_true[:, label]
+            y_pred_label = y_pred[:, label]
+
+            pos_mask = (y_true_label == 1)
+            neg_mask = (y_true_label == 0)
+
+            pos_scores = y_pred_label[pos_mask]
+            neg_scores = y_pred_label[neg_mask]
+
+            if pos_scores.size(0) == 0 or neg_scores.size(0) == 0:
+                # If there are no positive or negative examples for this label, skip the calculation
+                continue
+
+            # Reshaping pos_scores into a column vector and expanding to match neg_scores at the second dimension
+            pos_scores = pos_scores.view(-1, 1).expand(-1, neg_scores.size(0))
+            # Reshaping neg_scores into a row vector and expanding to match pos_scores at the first dimension
+            neg_scores = neg_scores.view(1, -1).expand(pos_scores.size(0), -1)
+
+            # Calculate the hinge loss for the current label
+            a = 1 - pos_scores + neg_scores
+            hinge_loss = torch.mean(torch.clamp(a, min=0))  # Clamps all negative values to zero
+
+            # # Lu2:
+            # a = torch.clamp(1 - pos_scores, min=0) + torch.clamp(1 + neg_scores, min=0)
+            # hinge_loss = torch.mean(a) # Clamps all negative values to zero
+
+            # def tanh_function(x):
+            #     return (torch.exp(x) - torch.exp(-x)) / (torch.exp(x) + torch.exp(-x))
+            # tanh_loss = torch.mean(tanh_function(pos_scores) + tanh_function(-neg_scores))
+
+            # def logistic_function(x):
+            #     # Logistic function
+            #     logistic_value = (1 + torch.exp(-x))
+            #     # Apply base-2 logarithm
+            #     log_base_2_value = torch.log2(logistic_value)
+            #     return torch.mean(log_base_2_value)
+            # logistic_loss = logistic_function(pos_scores) + logistic_function(-neg_scores)
+
+            # Append the hinge loss for the current label to the list
+            rank_losses.append(hinge_loss)
+            # rank_losses.append(logistic_loss)
+
+        # Calculate the mean rank loss across all labels
+        if rank_losses:
+            final_loss = torch.mean(torch.stack(rank_losses))
+        else:
+            final_loss = torch.tensor(0.0)
+
+        return final_loss
+
 def ml_nn_loss2(targets, outputs, model, device=None):
-    if not device:
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    targets = targets.to(device)
-    outputs = outputs.to(device)
+    # if not device:
+    #     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # targets = targets.to(device)
+    # outputs = outputs.to(device)
 
     # Apply sigmoid activation if not already applied in the model
     if not isinstance(model, nn.Sequential) or not isinstance(model[-1], nn.Sigmoid):
@@ -209,9 +272,9 @@ def ml_nn_loss2(targets, outputs, model, device=None):
     # gpt_surrogate_auc_loss = SurrogateAUCLossDynamicWeighted()
     # loss = gpt_surrogate_auc_loss(targets, outputs)
 
-    surrogate_auc_loss_u2 = SurrogateAUCLossNatural()
+    # surrogate_auc_loss_u2 = SurrogateAUCLossNatural()
+    surrogate_auc_loss_u2 = MacroAUCLossNatural()
     loss = surrogate_auc_loss_u2(targets, outputs)
-
 
     # label_length = targets.size(1)
     # auc_loss = get_auc_loss_u2(targets, outputs, label_length, device)

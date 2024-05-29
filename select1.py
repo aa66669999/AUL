@@ -2,7 +2,8 @@ import numpy as np
 import torch
 from sklearn.metrics.pairwise import rbf_kernel as RBF
 from sklearn.cluster import KMeans
-import random
+
+from random import shuffle
 import time
 import numpy as np
 import pandas as pd
@@ -109,34 +110,34 @@ class dpmeans:
         self.obj = obj
         self.em_time = em_time
         return self.z, obj, em_time
-    def mutilabel_margin(self,probs,n_instances):
-        # Calculate the number of positive labels in new_training_data
-        avg_num_pos_labels = torch.mean(torch.sum(self.new_dataset.y, dim=1)).item()
-        print(avg_num_pos_labels)
-        # Calculate the top m margins for each instance0
-        margins, _ = torch.topk(probs, int(avg_num_pos_labels), dim=1)
-        margins_diff = margins[:, :-1] - margins[:, 1:]
-        # Calculate the mean margin across labels for each instance
-        xi = int(avg_num_pos_labels/2)
-        # Create a tensor representing the indices of margins_diff
-        indices = torch.arange(margins_diff.size(1), dtype=torch.float).unsqueeze(0)
-        # Compute the power term for each element
-        power_term = xi - indices
-        # Compute margins_diff multiplied by e to the power of (xi - index)
-        margins_diff_exp = margins_diff * torch.exp(power_term)
-        print('margin_diff_exp.shape', margins_diff_exp.shape)
-        sum_margin = torch.sum(margins_diff_exp, dim=1)
-        print('mean_margin', sum_margin.shape)
-        # Select the instances with the highest mean margin
-        _, selected_indices = torch.topk(sum_margin, n_instances, largest=False)
-        return selected_indices
-    def random(self,n_instances):
+def mutilabel_margin(self,probs,n_instances):
+    # Calculate the number of positive labels in new_training_data
+    avg_num_pos_labels = torch.mean(torch.sum(self.new_dataset.y, dim=1)).item()
+    print(avg_num_pos_labels)
+    # Calculate the top m margins for each instance0
+    margins, _ = torch.topk(probs, int(avg_num_pos_labels), dim=1)
+    margins_diff = margins[:, :-1] - margins[:, 1:]
+    # Calculate the mean margin across labels for each instance
+    xi = int(avg_num_pos_labels/2)
+    # Create a tensor representing the indices of margins_diff
+    indices = torch.arange(margins_diff.size(1), dtype=torch.float).unsqueeze(0)
+    # Compute the power term for each element
+    power_term = xi - indices
+    # Compute margins_diff multiplied by e to the power of (xi - index)
+    margins_diff_exp = margins_diff * torch.exp(power_term)
+    print('margin_diff_exp.shape', margins_diff_exp.shape)
+    sum_margin = torch.sum(margins_diff_exp, dim=1)
+    print('mean_margin', sum_margin.shape)
+    # Select the instances with the highest mean margin
+    _, selected_indices = torch.topk(sum_margin, n_instances, largest=False)
+    return selected_indices
+def random(self,n_instances):
     # # random select
-        total_instances = len(self.dataset)
-        indices = list(range(total_instances))
-        random.shuffle(indices)
-        selected_indices = indices[:n_instances]
-        return selected_indices
+    total_instances = len(self.dataset)
+    indices = list(range(total_instances))
+    shuffle(indices)
+    selected_indices = indices[:n_instances]
+    return selected_indices
 def test1(self, probs, n_instances):
     temp1 = np.square(probs.data - 0.5)
     temp2 = torch.sum(temp1, dim=0)
@@ -605,6 +606,63 @@ def test13(self, probs, n_instances):
     print("cc")
     return list1
 def test15(self, probs, n_instances):
+
+    ctraining = self.train_origin
+    ctraining1 = np.array(ctraining)
+    ctraining2 = ctraining1 * 10
+    cpredit = self.pool_origin
+    cpredit1 = np.array(cpredit)
+    cpredit2 = cpredit1 * 10
+
+    cresult = RBF(cpredit2, ctraining2)
+    cresult2 = np.max(cresult, axis=1)
+    cresult3 = torch.tensor(cresult2)
+    a = cresult3.size()
+    a = a[0]
+    value21, cresult5 = torch.topk(cresult3, k=int(a/20), largest=True)
+    value22, cresult6 = torch.topk(cresult3, k=int(a /20), largest=True)
+    interval1=value21[-1]
+    interval1=interval1.numpy()
+    interval2 = value22[-1]
+    interval2=interval2.numpy()
+    #cresult6 = np.array(cresult5)
+    #variance,mean=torch.var_mean(cresult3, dim=0, keepdim=True)
+    #interval = stats.norm.interval(0.8, mean, variance)
+    temp1 = torch.square(probs.data - 0.5)
+    temp2 = torch.sum(temp1, dim=0)
+    #temp31 = torch.sum(temp1, dim=1)
+    #a = temp31.size()
+    #a = a[0]
+    #temp21 = temp2 / a
+    #testmin = torch.argmin(temp21)
+    #print(f"Min index in pooling {testmin}")
+    _, collum = torch.topk(temp2, k=1, largest=False)
+    c = collum
+    c = c.cpu()
+    c = c.numpy()
+    c1 = c[0]
+    print(f"Min label in pooling {c1}")
+    value, row1 = torch.sort(temp1[:, c1], dim=0)
+    size2=row1.size()
+    size2 = size2[0]
+    list=[]
+    for i in range(size2):
+        indextemp1=row1[i]
+        cvalue1=cresult3[indextemp1]
+        cvalue2=cvalue1.numpy()
+        if cvalue2 < interval1 :
+            indextemp2=indextemp1.cpu()
+            indextemp3=indextemp2.numpy()
+            list.append(indextemp3)
+            if len(list)>=n_instances:
+                print("selection breaking ")
+                break
+        else:
+            print(f"not selected {indextemp1} value {cvalue2}")
+    list1=np.array(list)
+    print("cc")
+    return list1
+def test16(self, probs, n_instances):
 
     ctraining = self.train_origin
     ctraining1 = np.array(ctraining)
