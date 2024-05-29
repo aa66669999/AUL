@@ -189,8 +189,39 @@ class SurrogateAUCLossNatural(nn.Module):
         # The torch.mean() function calculates the mean value of all the elements in the tensor,
         # regardless of its dimension.
         hinge_loss = torch.mean(torch.clamp(1 - pos_scores + neg_scores, min=0))  # clamps all negative values to zero
+        # lsep_pre = torch.mean(torch.log(1 + torch.exp(-pos_scores + neg_scores)))
+
         return hinge_loss
 
+
+class SurrogateAUCLossCVPR(nn.Module):
+    def __init__(self):
+        super(SurrogateAUCLossCVPR, self).__init__()
+
+    def forward(self, y_true, y_pred):
+        batch_size = y_true.size(0)
+        y_true = y_true.view(batch_size, -1)  # Reshaping the tensor to have a batch size and inferred second dimension
+        y_pred = y_pred.view(batch_size, -1)
+        # print('y_true:', y_true.shape)
+        # print('y_pred', y_pred.shape)
+
+        pos_mask = (y_true == 1)
+        neg_mask = (y_true == 0)
+
+        pos_scores = y_pred[pos_mask]
+        neg_scores = y_pred[neg_mask]
+
+        # Reshaping pos_scores into a column vector and expanding to match neg_scores at second dim
+        pos_scores = pos_scores.view(-1, 1).expand(-1, neg_scores.size(0))
+        # Reshaping neg_scores into a row vector. copying the elements and expanding to match pos_scores at first dim
+        neg_scores = neg_scores.view(1, -1).expand(pos_scores.size(0), -1)
+
+        # The torch.mean() function calculates the mean value of all the elements in the tensor,
+        # regardless of its dimension.
+        # hinge_loss = torch.mean(torch.clamp(1 - pos_scores + neg_scores, min=0))  # clamps all negative values to zero
+        lsep_pre = torch.mean(torch.log(1 + torch.exp(-pos_scores + neg_scores)))
+
+        return lsep_pre
 
 class MacroAUCLossNatural(nn.Module):
     def __init__(self):
@@ -224,12 +255,15 @@ class MacroAUCLossNatural(nn.Module):
             neg_scores = neg_scores.view(1, -1).expand(pos_scores.size(0), -1)
 
             # Calculate the hinge loss for the current label
-            a = 1 - pos_scores + neg_scores
-            hinge_loss = torch.mean(torch.clamp(a, min=0))  # Clamps all negative values to zero
+            # a = 1 - pos_scores + neg_scores
+            # hinge_loss = torch.mean(torch.clamp(a, min=0))  # Clamps all negative values to zero
 
             # # Lu2:
             # a = torch.clamp(1 - pos_scores, min=0) + torch.clamp(1 + neg_scores, min=0)
             # hinge_loss = torch.mean(a) # Clamps all negative values to zero
+
+            # log-sum-exp pairwise loss:
+            lsep_pre = torch.mean(torch.log(1 + torch.exp(-pos_scores + neg_scores)))
 
             # def tanh_function(x):
             #     return (torch.exp(x) - torch.exp(-x)) / (torch.exp(x) + torch.exp(-x))
@@ -244,7 +278,7 @@ class MacroAUCLossNatural(nn.Module):
             # logistic_loss = logistic_function(pos_scores) + logistic_function(-neg_scores)
 
             # Append the hinge loss for the current label to the list
-            rank_losses.append(hinge_loss)
+            rank_losses.append(lsep_pre)
             # rank_losses.append(logistic_loss)
 
         # Calculate the mean rank loss across all labels
@@ -272,8 +306,9 @@ def ml_nn_loss2(targets, outputs, model, device=None):
     # gpt_surrogate_auc_loss = SurrogateAUCLossDynamicWeighted()
     # loss = gpt_surrogate_auc_loss(targets, outputs)
 
+    surrogate_auc_loss_u2 = SurrogateAUCLossCVPR()
     # surrogate_auc_loss_u2 = SurrogateAUCLossNatural()
-    surrogate_auc_loss_u2 = MacroAUCLossNatural()
+    # surrogate_auc_loss_u2 = MacroAUCLossNatural()
     loss = surrogate_auc_loss_u2(targets, outputs)
 
     # label_length = targets.size(1)

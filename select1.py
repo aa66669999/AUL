@@ -676,8 +676,10 @@ def test16(self, probs, n_instances):
     cresult3 = torch.tensor(cresult2)
     a = cresult3.size()
     a = a[0]
+    cresult21 = np.min(cresult, axis=1)
+    cresult31 = torch.tensor(cresult21)
     value21, cresult5 = torch.topk(cresult3, k=int(a/20), largest=True)
-    value22, cresult6 = torch.topk(cresult3, k=int(a /20), largest=True)
+    value22, cresult6 = torch.topk(cresult31, k=int(a /20), largest=False)
     interval1=value21[-1]
     interval1=interval1.numpy()
     interval2 = value22[-1]
@@ -698,7 +700,7 @@ def test16(self, probs, n_instances):
     c = c.cpu()
     c = c.numpy()
     c1 = c[0]
-    print(f"Min label in pooling {c1}")
+    print(f"Min label in pooling {c1} value {temp2[c1]}")
     value, row1 = torch.sort(temp1[:, c1], dim=0)
     size2=row1.size()
     size2 = size2[0]
@@ -707,7 +709,7 @@ def test16(self, probs, n_instances):
         indextemp1=row1[i]
         cvalue1=cresult3[indextemp1]
         cvalue2=cvalue1.numpy()
-        if cvalue2 < interval1 :
+        if cvalue2 < interval1 and cvalue2>interval2 :
             indextemp2=indextemp1.cpu()
             indextemp3=indextemp2.numpy()
             list.append(indextemp3)
@@ -719,6 +721,92 @@ def test16(self, probs, n_instances):
     list1=np.array(list)
     print("cc")
     return list1
+def test17(self, probs, n_instances):
+    temp1 = torch.square(probs.data - 0.5)
+    temp2 = torch.sum(temp1, dim=0)
+    temp31 = torch.sum(temp1, dim=1)
+    a = temp31.size()
+    a = a[0]
+    temp21 = temp2 / a
+    testmin = torch.argmin(temp21)
+    print(f"Min index in pooling {testmin}and value {temp2[testmin]}")
+    temp21=temp21.cpu()
+    temp2 = temp2.numpy()
+
+    a1 = np.array(temp21)
+    a22 = np.expand_dims(a1, 0)
+    a2 = a22.T
+    dp = dpmeans(a2)
+    dp.fit(a2)
+    k = dp.K
+    print(f"K means size {k}")
+    kmeans = KMeans(n_clusters=k, random_state=0, n_init="auto").fit(a2)
+    cc1 = kmeans.cluster_centers_
+    labels = kmeans.labels_
+    labelmin = np.argmin(cc1)
+    index2 = np.where(labels == labelmin)[0]
+    print(f"K means index {index2} and value{temp21[index2]}")
+    size11 = index2.size
+    temptotal = 0
+    """
+    ctraining = self.train_origin
+    ctraining1 = np.array(ctraining)
+    ctraining2 = ctraining1 * 10
+    cpredit = self.pool_origin
+    cpredit1 = np.array(cpredit)
+    cpredit2 = cpredit1 * 10
+
+    cresult = RBF(cpredit2, ctraining2)
+    cresult2 = np.max(cresult, axis=1)
+    cresult3 = torch.tensor(cresult2)
+    a = cresult3.size()
+    a = a[0]
+    cresult21 = np.min(cresult, axis=1)
+    cresult31 = torch.tensor(cresult21)
+    value21, cresult5 = torch.topk(cresult3, k=int(a/20), largest=True)
+    value22, cresult6 = torch.topk(cresult31, k=int(a /20), largest=False)
+    interval1=value21[-1]
+    interval1=interval1.numpy()
+    interval2 = value22[-1]
+    interval2=interval2.numpy()
+    #cresult6 = np.array(cresult5)
+    #variance,mean=torch.var_mean(cresult3, dim=0, keepdim=True)
+    #interval = stats.norm.interval(0.8, mean, variance)
+    temp1 = torch.square(probs.data - 0.5)
+    temp2 = torch.sum(temp1, dim=0)
+    #temp31 = torch.sum(temp1, dim=1)
+    #a = temp31.size()
+    #a = a[0]
+    #temp21 = temp2 / a
+    #testmin = torch.argmin(temp21)
+    #print(f"Min index in pooling {testmin}")
+    _, collum = torch.topk(temp2, k=1, largest=False)
+    c = collum
+    c = c.cpu()
+    c = c.numpy()
+    c1 = c[0]
+    print(f"Min label in pooling {c1} value {temp2[c1]}")
+    value, row1 = torch.sort(temp1[:, c1], dim=0)
+    size2=row1.size()
+    size2 = size2[0]
+    list=[]
+    for i in range(size2):
+        indextemp1=row1[i]
+        cvalue1=cresult3[indextemp1]
+        cvalue2=cvalue1.numpy()
+        if cvalue2 < interval1 and cvalue2>interval2 :
+            indextemp2=indextemp1.cpu()
+            indextemp3=indextemp2.numpy()
+            list.append(indextemp3)
+            if len(list)>=n_instances:
+                print("selection breaking ")
+                break
+        else:
+            print(f"not selected {indextemp1} value {cvalue2}")
+    list1=np.array(list)
+    print("cc")
+    return list1
+    """
 def testsum(self, probs, n_instances):
     temp1=self.dataset.y
     temp2 = torch.sum(temp1, dim=1)
