@@ -730,10 +730,10 @@ def test17(self, probs, n_instances):
     temp21 = temp2 / a
     testmin = torch.argmin(temp21)
     print(f"Min index in pooling {testmin}and value {temp2[testmin]}")
-    temp21=temp21.cpu()
-    temp2 = temp2.numpy()
+    temp22=temp21.cpu()
+    temp23 = temp22.numpy()
 
-    a1 = np.array(temp21)
+    a1 = np.array(temp22)
     a22 = np.expand_dims(a1, 0)
     a2 = a22.T
     dp = dpmeans(a2)
@@ -747,7 +747,25 @@ def test17(self, probs, n_instances):
     index2 = np.where(labels == labelmin)[0]
     print(f"K means index {index2} and value{temp21[index2]}")
     size11 = index2.size
-    temptotal = 0
+    value11, cresult11 = torch.topk(temp21, size11, largest=False)
+
+    list2=[]
+    for i in range(size11):
+        tempindex11=cresult11[i]
+        value, row1 = torch.sort(temp1[:, tempindex11], dim=0)
+        if row1[0] not in list2:
+            tempindex12=row1[0].cpu()
+            tempindex13 = tempindex12.numpy()
+            list2.append(tempindex13)
+        if len(list2) >= n_instances:
+            print("selection breaking ")
+            break
+        if i >= n_instances:
+            i = 0
+    list3 = np.array(list2)
+
+    return list3
+
     """
     ctraining = self.train_origin
     ctraining1 = np.array(ctraining)
