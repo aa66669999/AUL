@@ -259,11 +259,13 @@ class MacroAUCLossNatural(nn.Module):
             # hinge_loss = torch.mean(torch.clamp(a, min=0))  # Clamps all negative values to zero
 
             # # Lu2:
-            # a = torch.clamp(1 - pos_scores, min=0) + torch.clamp(1 + neg_scores, min=0)
-            # hinge_loss = torch.mean(a) # Clamps all negative values to zero
+            #a = torch.clamp(1 - pos_scores, min=0) + torch.clamp(1 + neg_scores, min=0)
+            #hinge_loss = torch.mean(a) # Clamps all negative values to zero
+            a=1 - pos_scores + neg_scores
+            hinge_loss = torch.mean(torch.clamp(a, min=0))  # Clamps all negative values to zero
 
             # log-sum-exp pairwise loss:
-            lsep_pre = torch.mean(torch.log(1 + torch.exp(-pos_scores + neg_scores)))
+            #lsep_pre = torch.mean(torch.log(1 + torch.exp(-pos_scores + neg_scores)))
 
             # def tanh_function(x):
             #     return (torch.exp(x) - torch.exp(-x)) / (torch.exp(x) + torch.exp(-x))
@@ -278,7 +280,7 @@ class MacroAUCLossNatural(nn.Module):
             # logistic_loss = logistic_function(pos_scores) + logistic_function(-neg_scores)
 
             # Append the hinge loss for the current label to the list
-            rank_losses.append(lsep_pre)
+            rank_losses.append(hinge_loss)
             # rank_losses.append(logistic_loss)
 
         # Calculate the mean rank loss across all labels
@@ -306,9 +308,9 @@ def ml_nn_loss2(targets, outputs, model, device=None):
     # gpt_surrogate_auc_loss = SurrogateAUCLossDynamicWeighted()
     # loss = gpt_surrogate_auc_loss(targets, outputs)
 
-    surrogate_auc_loss_u2 = SurrogateAUCLossCVPR()
+    #surrogate_auc_loss_u2 = SurrogateAUCLossCVPR()
     # surrogate_auc_loss_u2 = SurrogateAUCLossNatural()
-    # surrogate_auc_loss_u2 = MacroAUCLossNatural()
+    surrogate_auc_loss_u2 = MacroAUCLossNatural()
     loss = surrogate_auc_loss_u2(targets, outputs)
 
     # label_length = targets.size(1)

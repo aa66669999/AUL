@@ -32,8 +32,8 @@ import torch.nn.functional as F
 
 class ActiveLearning:
     def __init__(self, train_origin,pool_origin,training_data: MyDataset, pooling_data: MyDataset, device_al_train):
-        self.dataset = pooling_data
-        self.new_dataset = training_data
+        self.pool_dataset = pooling_data
+        self.train_dataset = training_data
         self.device_al_train = device_al_train
         self.train_origin = train_origin
         self.pool_origin = pool_origin
@@ -67,7 +67,7 @@ class ActiveLearning:
                 model.train()
 
                 # Forward pass to get predictions
-                logits = model(self.dataset.x.to(self.device_al_train))
+                logits = model(self.pool_dataset.x.to(self.device_al_train))
                 probs = torch.sigmoid(logits)
 
             all_predictions.append(probs.unsqueeze(0))  # Store predictions for each sample
@@ -88,17 +88,17 @@ class ActiveLearning:
         _, selected_indices = torch.topk(uncertainty, n_instances)
 
         # Get the corresponding instances and labels
-        new_training_data = self.dataset.x[selected_indices]
-        new_training_labels = self.dataset.y[selected_indices]
+        new_training_data = self.pool_dataset.x[selected_indices]
+        new_training_labels = self.pool_dataset.y[selected_indices]
 
         # Append the new instances to the new dataset
-        self.new_dataset.x = torch.cat([self.new_dataset.x, new_training_data])
-        self.new_dataset.y = torch.cat([self.new_dataset.y, new_training_labels])
+        self.train_dataset.x = torch.cat([self.train_dataset.x, new_training_data])
+        self.train_dataset.y = torch.cat([self.train_dataset.y, new_training_labels])
 
         # Remove the selected instances from the pool dataset
-        indices_to_keep = [i for i in range(len(self.dataset)) if i not in selected_indices]
-        self.dataset.x = torch.index_select(self.dataset.x, 0, torch.tensor(indices_to_keep))
-        self.dataset.y = torch.index_select(self.dataset.y, 0, torch.tensor(indices_to_keep))
+        indices_to_keep = [i for i in range(len(self.pool_dataset)) if i not in selected_indices]
+        self.pool_dataset.x = torch.index_select(self.pool_dataset.x, 0, torch.tensor(indices_to_keep))
+        self.pool_dataset.y = torch.index_select(self.pool_dataset.y, 0, torch.tensor(indices_to_keep))
 
 
 
@@ -106,10 +106,10 @@ class ActiveLearning:
         # Calculate the entropy of predictions for all instances in the pool dataset
         with torch.no_grad():
            # model = model.cpu()
-           # logits = model(self.dataset.x.cpu())
+           # logits = model(self.pool_dataset.x.cpu())
             model=model.cuda()
 
-            tempdata=self.dataset.x.cuda()
+            tempdata=self.pool_dataset.x.cuda()
             logits = model(tempdata)
             # print("Logits shape:", logits.shape)
             probs = torch.sigmoid(logits)  # Using sigmoid instead of softmax
@@ -135,33 +135,33 @@ class ActiveLearning:
         # _, selected_indices = torch.topk(entropy, n_instances)  # , largest=False)
 
 
-        selected_indices=select1.test17(self,probs, n_instances)
+        selected_indices=select1.CVIRS_sampling(self,probs, n_instances)
         #selected_indices=select1.random(self,n_instances)
 
         # Get the corresponding instances and labels
-        new_training_data = self.dataset.x[selected_indices]
-        new_training_labels = self.dataset.y[selected_indices]
+        new_training_data = self.pool_dataset.x[selected_indices]
+        new_training_labels = self.pool_dataset.y[selected_indices]
         new_training_origin_data=self.pool_origin[selected_indices]
 
         # Append the new instances to the new dataset
-        self.new_dataset.x = torch.cat([self.new_dataset.x, new_training_data])
-        self.new_dataset.y = torch.cat([self.new_dataset.y, new_training_labels])
+        self.train_dataset.x = torch.cat([self.train_dataset.x, new_training_data])
+        self.train_dataset.y = torch.cat([self.train_dataset.y, new_training_labels])
         self.train_origin =torch.cat([self.train_origin, new_training_origin_data])
 
         # Remove the selected instances from the pool dataset
-        indices_to_keep = [i for i in range(len(self.dataset)) if i not in selected_indices]
-        self.dataset.x = torch.index_select(self.dataset.x, 0, torch.tensor(indices_to_keep))
-        self.dataset.y = torch.index_select(self.dataset.y, 0, torch.tensor(indices_to_keep))
+        indices_to_keep = [i for i in range(len(self.pool_dataset)) if i not in selected_indices]
+        self.pool_dataset.x = torch.index_select(self.pool_dataset.x, 0, torch.tensor(indices_to_keep))
+        self.pool_dataset.y = torch.index_select(self.pool_dataset.y, 0, torch.tensor(indices_to_keep))
         self.pool_origin = torch.index_select(self.pool_origin,0, torch.tensor(indices_to_keep))
 
-        print(self.new_dataset.__len__())
-        print(self.dataset.__len__())
+        print(self.train_dataset.__len__())
+        print(self.pool_dataset.__len__())
 
     def train_model(self, model, args):
         model = model.to(self.device_al_train)
         criterion = ml_nn_loss2
         optimizer = optim.Adam(model.parameters(), lr=args.lr)
-        al_data_loader = DataLoader(self.new_dataset, batch_size=args.active_batch_size, shuffle=True)
+        al_data_loader = DataLoader(self.train_dataset, batch_size=args.active_batch_size, shuffle=True)
         for epoch in range(args.active_epochs):
             running_loss = 0.0
             for (inputs, labels) in al_data_loader:

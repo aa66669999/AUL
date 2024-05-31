@@ -3,7 +3,7 @@ import argparse
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--seed', type=int, default=2,
+    parser.add_argument('--seed', type=int, default=10,
                         help="Seed for the code")
     parser.add_argument('--data_name', type=str, default="Delicious",  # Delicious bibTex
                         help="Name of Dataset")
